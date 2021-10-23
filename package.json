@@ -4,9 +4,13 @@
     "description": "discord bot",
     "main": "build/client.js",
     "scripts": {
+        "postinstall": "tsc",
         "build": "tsc",
         "start": "node build/client.js",
         "dev": "ts-node src/client.ts"
+    },
+    "engines": {
+        "node": "14.18.1"
     },
     "repository": {
         "type": "git",
