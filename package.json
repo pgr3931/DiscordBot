@@ -10,7 +10,7 @@
         "dev": "ts-node src/client.ts"
     },
     "engines": {
-        "node": "14.18.1"
+        "node": "17.0.1"
     },
     "repository": {
         "type": "git",
