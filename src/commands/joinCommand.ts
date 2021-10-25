@@ -37,6 +37,10 @@ class JoinCommand extends BaseCommand {
                         adapterCreator: channel.guild.voiceAdapterCreator,
                         selfDeaf: false
                     }),
+                    () => {
+                        subscriptions.delete(interaction.guildId!);
+                        interaction.followUp("That's it folks");
+                    }
                 );
                 subscription.voiceConnection.on('error', console.warn);
                 subscriptions.set(interaction.guildId, subscription);
@@ -48,7 +52,7 @@ class JoinCommand extends BaseCommand {
                 await playSong(interaction, q.url);
             });
         }
-        
+
         interaction.followUp('Hi');
     }
 }

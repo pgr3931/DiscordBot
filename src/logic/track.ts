@@ -1,5 +1,5 @@
 import { AudioResource, createAudioResource, StreamType } from '@discordjs/voice';
-import ytdl, { getInfo } from 'ytdl-core';
+import { downloadFromVideo, getVideoInfo } from "youtube-scrapper";
 
 /**
  * This is the data required to create a Track object
@@ -42,8 +42,10 @@ export class Track implements TrackData {
     /**
      * Creates an AudioResource from this Track.
      */
-    public createAudioResource(): AudioResource<Track> {
-        const stream = ytdl(this.url, { filter: 'audioonly' })
+    public async createAudioResource(): Promise<AudioResource<Track>> {
+        const video = await getVideoInfo(this.url);
+        const format = video.formats.find(f => f.hasAudio && f.mimeType.includes('audio')) ?? video.formats.find(f => f.hasAudio);
+        const stream = downloadFromVideo(video, format, { chunkMode: { chunkSize: undefined }, })
         return createAudioResource(stream, { inputType: StreamType.Arbitrary, metadata: this });
     }
 
@@ -55,17 +57,17 @@ export class Track implements TrackData {
      * @returns The created Track
      */
     public static async from(url: string, methods: Pick<Track, 'onStart' | 'onFinish' | 'onError'>): Promise<Track> {
-        const info = await getInfo(url);
+        const info = await getVideoInfo(url);
 
         // The methods are wrapped so that we can ensure that they are only called once.
         const wrappedMethods = {
             onStart() {
                 wrappedMethods.onStart = noop;
-                methods.onStart(info.videoDetails.title);
+                methods.onStart(info.details.title);
             },
             onFinish() {
                 wrappedMethods.onFinish = noop;
-                methods.onFinish(info.videoDetails.title);
+                methods.onFinish(info.details.title);
             },
             onError(error: Error) {
                 wrappedMethods.onError = noop;
@@ -74,7 +76,7 @@ export class Track implements TrackData {
         };
 
         return new Track({
-            title: info.videoDetails.title,
+            title: info.details.title,
             url,
             ...wrappedMethods,
         });

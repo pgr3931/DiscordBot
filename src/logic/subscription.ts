@@ -6,10 +6,10 @@ import {
 	entersState,
 	VoiceConnection,
 	VoiceConnectionDisconnectReason,
-	VoiceConnectionStatus,
+	VoiceConnectionStatus
 } from '@discordjs/voice';
-import { Track } from './track';
 import { promisify } from 'util';
+import { Track } from './track';
 
 const wait = promisify(setTimeout);
 
@@ -23,11 +23,13 @@ export class MusicSubscription {
 	public queue: Track[];
 	public queueLock = false;
 	public readyLock = false;
+	public onDone: Function;
 
-	public constructor(voiceConnection: VoiceConnection) {
+	public constructor(voiceConnection: VoiceConnection, onDone: Function) {
 		this.voiceConnection = voiceConnection;
 		this.audioPlayer = createAudioPlayer();
 		this.queue = [];
+		this.onDone = onDone;
 
 		this.voiceConnection.on('stateChange', async (_, newState) => {
 			if (newState.status === VoiceConnectionStatus.Disconnected) {
@@ -116,20 +118,20 @@ export class MusicSubscription {
 	 *
 	 * @param track The track index to remove
 	 */
-	 public remove(index: number) {
+	public remove(index: number) {
 		return this.queue.splice(index, 1);
 	}
 
 	/**
 	 * Shuffles the queue
 	 */
-	 public shuffle() {
+	public shuffle() {
 		for (let i = this.queue.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
-			const temp =  this.queue[i];
-			this.queue[i] =  this.queue[j];
+			const temp = this.queue[i];
+			this.queue[i] = this.queue[j];
 			this.queue[j] = temp;
-		  }
+		}
 	}
 
 	/**
@@ -143,7 +145,7 @@ export class MusicSubscription {
 	/**
 	 * Empties the queue
 	 */
-	 public clear() {
+	public clear() {
 		this.queueLock = true;
 		this.queue = [];
 	}
@@ -151,9 +153,13 @@ export class MusicSubscription {
 	/**
 	 * Attempts to play a Track from the queue
 	 */
-	private processQueue(): void {
+	private async processQueue(): Promise<void> {
 		// If the queue is locked (already being processed), is empty, or the audio player is already playing something, return
 		if (this.queueLock || this.audioPlayer.state.status !== AudioPlayerStatus.Idle || this.queue.length === 0) {
+			if (this.queue.length === 0) {
+				this.voiceConnection.destroy();
+				this.onDone();
+			}
 			return;
 		}
 		// Lock the queue to guarantee safe access
@@ -163,7 +169,7 @@ export class MusicSubscription {
 		const nextTrack = this.queue.shift()!;
 		try {
 			// Attempt to convert the Track into an AudioResource (i.e. start streaming the video)
-			const resource = nextTrack.createAudioResource();
+			const resource = await nextTrack.createAudioResource();
 			this.audioPlayer.play(resource);
 			this.queueLock = false;
 		} catch (error) {

@@ -27,6 +27,10 @@ export const playSong = async (interaction: CommandInteraction, url: string) => 
                     adapterCreator: channel.guild.voiceAdapterCreator,
                     selfDeaf: false
                 }),
+                () => {
+                    subscriptions.delete(interaction.guildId!);
+                    interaction.followUp("That's it folks");
+                }
             );
             subscription.voiceConnection.on('error', console.warn);
             subscriptions.set(interaction.guildId, subscription);
@@ -52,12 +56,12 @@ export const playSong = async (interaction: CommandInteraction, url: string) => 
         // Attempt to create a Track from the user's video URL
         const track = await Track.from(url, {
             onStart() {
-                interaction.followUp({ content: `Now playing: **${track.title}**`, ephemeral: true }).catch(console.warn);
+                interaction.followUp(`Now playing: **${track.title}**`).catch(console.warn);
             },
             onFinish() { },
             onError(error) {
                 console.warn(error);
-                interaction.followUp({ content: `Error: ${error.message}`, ephemeral: true }).catch(console.warn);
+                interaction.followUp(`Error: ${error.message}`).catch(console.warn);
             },
         });
         // Enqueue the track and reply a success message to the user
@@ -65,6 +69,6 @@ export const playSong = async (interaction: CommandInteraction, url: string) => 
         await interaction.followUp(`Enqueued **${track.title}**`);
     } catch (error) {
         console.warn(error);
-        await interaction.reply('Failed to play track, please try again later!');
+        await interaction.followUp(`Failed to play track. Error: ${error.message}`);
     }
 }
